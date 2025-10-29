@@ -1,18 +1,28 @@
-# Sử dụng PHP 8.2 với Composer
 FROM php:8.2-cli
 
-# Cài extension cần thiết
-RUN apt-get update && apt-get install -y unzip libpng-dev libonig-dev libxml2-dev && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+# Cài các extension cần thiết
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+@@ -10,10 +11,21 @@ RUN apt-get update && apt-get install -y \
 
-# Cài Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+WORKDIR /var/www
 
-WORKDIR /app
+# Copy toàn bộ mã nguồn vào container
 COPY . .
 
+# Cài composer và dependency
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 RUN composer install --no-dev --optimize-autoloader
-RUN php artisan key:generate --force
-RUN php artisan migrate --force
 
-EXPOSE 10000
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=10000"]
+# ✅ Thêm dòng này để tạo symbolic link storage/public
+RUN php artisan storage:link
+
+# ✅ Tạo cache config và route để build nhanh hơn
+RUN php artisan config:cache && php artisan route:cache
+
+# Mở port cho Laravel
+EXPOSE 8000
+
+# ✅ Chạy server
+CMD php artisan serve --host=0.0.0.0 --port=$PORT
