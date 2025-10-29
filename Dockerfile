@@ -1,42 +1,28 @@
-# Sử dụng PHP 8.2 CLI
 FROM php:8.2-cli
 
-# Cài các extension và gói cần thiết
+# Cài extension cần thiết
 RUN apt-get update && apt-get install -y \
-    unzip \
-    git \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libonig-dev \
-    libxml2-dev \
-    libzip-dev \
-    zip \
-    curl \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+    libpng-dev libjpeg-dev zip unzip git curl && \
+    docker-php-ext-install pdo pdo_mysql
 
-# Cài Composer (lấy từ image composer chính thức)
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Đặt thư mục làm việc
 WORKDIR /var/www
 
-# Copy toàn bộ mã nguồn
+# Copy toàn bộ code
 COPY . .
 
-# Cài các gói Laravel
+# Cài composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 RUN composer install --no-dev --optimize-autoloader
 
-# Tạo key & chạy migrate (nếu DB chưa sẵn sàng thì bỏ qua lỗi)
-RUN php artisan key:generate --force
-RUN php artisan migrate --force || true
+# ✅ Tạo file .env tạm để artisan hoạt động
+RUN cp .env.example .env
 
-# Tạo symbolic link & cache config
-RUN php artisan storage:link || true
+# ✅ Tạo key và cache config
+RUN php artisan key:generate --force
 RUN php artisan config:cache && php artisan route:cache
 
-# Mở port Render
-EXPOSE 10000
+# Mở port Laravel
+EXPOSE 8000
 
-# Chạy server
+# ✅ Chạy server
 CMD php artisan serve --host=0.0.0.0 --port=$PORT
