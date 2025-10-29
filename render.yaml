@@ -1,18 +1,7 @@
 services:
   - type: web
     name: food-api
-    env: php
+    env: docker
     plan: free
     region: oregon
-    buildCommand: |
-      composer install --no-dev --optimize-autoloader
-      php artisan key:generate --force
-      php artisan migrate --force
-    startCommand: php artisan serve --host 0.0.0.0 --port 10000
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: APP_DEBUG
-        value: false
-      - key: APP_URL
-        value: https://food-api-xl8n.onrender.com
+    dockerfilePath: ./Dockerfile
