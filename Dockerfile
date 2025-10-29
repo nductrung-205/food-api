@@ -1,7 +1,11 @@
+# ==========================
+# Laravel Dockerfile (Render)
+# ==========================
+
 # Sử dụng PHP 8.2 CLI
 FROM php:8.2-cli
 
-# Cài các extension và gói cần thiết
+# Cài đặt các gói và extension cần thiết
 RUN apt-get update && apt-get install -y \
     unzip \
     git \
@@ -21,28 +25,24 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Đặt thư mục làm việc
 WORKDIR /var/www
 
-# Copy toàn bộ mã nguồn
+# Copy toàn bộ project vào container
 COPY . .
 
-# Cài các gói Laravel
+# Cài các gói Laravel (production)
 RUN composer install --no-dev --optimize-autoloader
 
-# Copy .env.example thành .env nếu chưa có
+# Copy .env.example thành .env (nếu chưa có)
 RUN cp .env.example .env || true
 
-# Sinh APP_KEY
+# Tạo APP_KEY
 RUN php artisan key:generate --force
 
-# Migrate + Seed (nếu DB sẵn sàng, nếu chưa thì bỏ qua lỗi)
-RUN php artisan migrate --force || true
-RUN php artisan db:seed --force || true
-
-# Tạo symbolic link & cache
-RUN php artisan storage:link || true
-RUN php artisan config:cache && php artisan route:cache
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Mở port Render
 EXPOSE 8000
 
-# Chạy server Laravel
-CMD php artisan serve --host=0.0.0.0 --port=$PORT
+# Lệnh khởi chạy container
+CMD ["/entrypoint.sh"]
