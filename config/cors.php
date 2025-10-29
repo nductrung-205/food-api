@@ -9,6 +9,8 @@ return [
     'allowed_origins' => [
         'https://ban-do-an.vercel.app',
         'http://localhost:5173',
+        'https://*.vercel.app',
+        'https://food-api-xl8n.onrender.com',
     ],
 
     'allowed_origins_patterns' => [],
