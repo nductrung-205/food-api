@@ -9,13 +9,13 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        if (!User::exists()) {
-            $this->call(UserSeeder::class);
-            $this->call(CategorySeeder::class);
-            $this->call(ProductSeeder::class);
-            $this->call(BannerSeeder::class);
-            $this->call(CouponSeeder::class);
-        }
+        // if (!User::exists()) {
+        //     $this->call(UserSeeder::class);
+        //     $this->call(CategorySeeder::class);
+        //     $this->call(ProductSeeder::class);
+        //     $this->call(BannerSeeder::class);
+        //     $this->call(CouponSeeder::class);
+        // }
 
         $this->call([
             UserSeeder::class,

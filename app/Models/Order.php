@@ -19,6 +19,7 @@ class Order extends Model
         'total_price',
         'status',
         'payment_method',
+        'paid_at',
         'customer_name',
         'customer_email',
         'customer_phone',
@@ -35,6 +36,7 @@ class Order extends Model
         'subtotal_price' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
         'total_price' => 'decimal:2',
+        'paid_at' => 'datetime',
     ];
 
     // Thêm accessor

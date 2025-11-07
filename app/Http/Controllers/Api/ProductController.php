@@ -10,6 +10,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\ProductsImport;
 
 class ProductController extends Controller
 {
@@ -94,7 +96,7 @@ class ProductController extends Controller
                 'description' => 'nullable|string',
                 'price' => 'required|numeric|min:0',
                 'stock' => 'nullable|integer|min:0',
-                'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,jfif|max:2048',
                 'status' => 'boolean',
             ]);
 
@@ -231,7 +233,7 @@ class ProductController extends Controller
                 ]),
             ]);
         } catch (ValidationException $e) {
-            Log::error('❌ Validation lỗi khi update product:', $e->errors()); 
+            Log::error('❌ Validation lỗi khi update product:', $e->errors());
             return response()->json([
                 'success' => false,
                 'message' => 'Dữ liệu không hợp lệ',
@@ -383,6 +385,46 @@ class ProductController extends Controller
                 'success' => false,
                 'message' => 'Lỗi khi tải sản phẩm theo danh mục',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240', 
+        ]);
+
+        try {
+            Excel::import(new ProductsImport, $request->file('file'));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Nhập sản phẩm từ Excel thành công!',
+            ]);
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = [
+                    'row' => $failure->row(),
+                    'attribute' => $failure->attribute(),
+                    'errors' => $failure->errors(),
+                    'values' => $failure->values(),
+                ];
+            }
+            Log::error("Excel Import Validation Errors:", ['errors' => $errors]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra trong quá trình kiểm tra dữ liệu Excel. Vui lòng kiểm tra lại file.',
+                'errors' => $errors,
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error("Excel Import General Error:", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi nhập sản phẩm từ Excel: ' . $e->getMessage(),
+                'error_detail' => $e->getMessage()
             ], 500);
         }
     }

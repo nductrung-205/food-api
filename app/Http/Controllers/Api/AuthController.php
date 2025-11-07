@@ -34,7 +34,7 @@ class AuthController extends Controller
             'fullname' => $request->fullname,
             'email'    => $request->email,
             'password' => Hash::make($request->password),
-            'role'     => User::ROLE_USER ?? 1, // Nếu chưa định nghĩa ROLE_USER
+            'role'     => User::ROLE_USER ?? 1, 
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;

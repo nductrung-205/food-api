@@ -15,8 +15,12 @@ use App\Http\Controllers\Api\{
     CouponController,
     DeliveryController,
     NotificationController,
-    RevenueExportController
+    RevenueExportController,
+    VNPayController,
+    ForgotPasswordController
 };
+use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\MomoController;
 
 // ⚠️ chỉ tạm dùng để test
 Route::get('/users', [UserController::class, 'index']);
@@ -28,6 +32,9 @@ Route::get('/users', [UserController::class, 'index']);
 */
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login',    [AuthController::class, 'login'])->name('login');
+
+Route::post('/forgot-password', [ForgotPasswordController::class, 'forgotPassword']);
+Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword']);
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +53,17 @@ Route::get('/categories/{id}/products', [ProductController::class, 'getByCategor
 // Lấy theo slug
 Route::get('/category-slug/{slug}/products', [CategoryController::class, 'productsBySlug']);
 
+Route::post('/chat', [ChatbotController::class, 'chat']);
+
+Route::prefix('vnpay')->group(function () {
+    Route::post('/create-payment', [VNPayController::class, 'createPayment']);
+    Route::get('/return', [VNPayController::class, 'vnpayReturn']);
+});
+
+// routes/api.php
+    Route::post('/momo/create-payment', [MomoController::class, 'createPayment']);
+    Route::post('/momo/notify', [MomoController::class, 'notify']);
+    Route::get('/momo/status/{orderId}', [MomoController::class, 'transactionStatus']);
 
 /*
 |--------------------------------------------------------------------------
@@ -74,7 +92,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('payments', PaymentController::class)->only(['store', 'show']);
 
     // Notifications & Delivery tracking
-    Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/delivery/{id}', [DeliveryController::class, 'show']);
 
 
@@ -82,6 +99,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/reviews/{id}', [ReviewController::class, 'destroy']);
 
     Route::post('apply-coupon', [CouponController::class, 'apply']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+    Route::post('/notifications', [NotificationController::class, 'store']);
 });
 
 /*
@@ -100,6 +122,7 @@ Route::middleware(['auth:sanctum', 'is_admin'])->prefix('admin')->group(function
     Route::put('products/{id}/stock', [ProductController::class, 'updateStock']);
     Route::put('products/{id}/toggle-status', [ProductController::class, 'toggleStatus']);
     Route::post('products/bulk-delete', [ProductController::class, 'bulkDelete']);
+    Route::post('products/import', [ProductController::class, 'import']);
 
     // ========== ORDER MANAGEMENT ==========
     Route::get('orders/statistics', [OrderController::class, 'statistics']);
@@ -119,4 +142,9 @@ Route::middleware(['auth:sanctum', 'is_admin'])->prefix('admin')->group(function
 
     Route::get('reviews', [ReviewController::class, 'all']);
     Route::put('reviews/{id}/toggle', [ReviewController::class, 'toggleVisibility']);
+
+    Route::get('notifications/all', [NotificationController::class, 'allNotifications']); // Lấy tất cả thông báo
+    Route::apiResource('notifications', NotificationController::class)->except(['index', 'show']); // Tạo, sửa, xóa
+    Route::put('notifications/{id}/toggle-read', [NotificationController::class, 'toggleReadStatus']); // Chuyển đổi trạng thái đọc
+    Route::post('notifications/send-to-all', [NotificationController::class, 'sendToAllUsers']); // Gửi thông báo tới tất cả người dùng
 });

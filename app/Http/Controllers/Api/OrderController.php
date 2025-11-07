@@ -98,8 +98,10 @@ class OrderController extends Controller
         try {
             $validatedData = $request->validate([
                 'user_id' => 'nullable|exists:users,id',
-                'payment_method' => 'required|string|in:COD,Banking',
-                'coupon_code' => 'nullable|string|max:255', // THÊM DÒNG NÀY ĐỂ NHẬN MÃ COUPON
+                'total_price' => 'required|numeric|min:0',
+                // Cập nhật dòng này để bao gồm MoMo
+                'payment_method' => 'required|string|in:COD,VNPay,MoMo', // <--- THÊM 'MoMo' VÀO ĐÂY
+                'coupon_code' => 'nullable|string|max:255',
                 'customer' => 'required|array',
                 'customer.name' => 'required|string|max:255',
                 'customer.email' => 'required|email|max:255',
@@ -116,6 +118,7 @@ class OrderController extends Controller
                 // CÓ THỂ THÊM 'total_price', 'subtotal_price', 'delivery_fee' nếu bạn muốn client gửi lên
                 // Nhưng tốt nhất là backend tự tính lại để tránh gian lận
             ]);
+
 
             DB::beginTransaction();
 
@@ -326,6 +329,7 @@ class OrderController extends Controller
                 'customer_city' => 'sometimes|string|max:255',
                 'customer_type' => 'sometimes|string|in:Nhà Riêng,Văn Phòng',
                 'customer_note' => 'nullable|string|max:500',
+
             ]);
 
             $order->update($validated);
@@ -364,24 +368,53 @@ class OrderController extends Controller
 
             $oldStatus = $order->status;
             $newStatus = $validated['status'];
+            $paymentMethod = $order->payment_method; // Lấy phương thức thanh toán
+
+            // --- LOGIC MỚI: TỰ ĐỘNG ÉP BUỘC TRẠNG THÁI CHO PTTT CHUYỂN KHOẢN (Banking) ---
+            $isBankingAndNotCancelled = ($paymentMethod === 'Banking' && $newStatus !== 'cancelled');
+            $shouldBeDelivered = $isBankingAndNotCancelled;
+
+            if ($shouldBeDelivered) {
+                // Nếu là Banking và KHÔNG phải là Cancelled, ép buộc trạng thái là delivered
+                // Điều này ghi đè bất kỳ trạng thái nào khác (pending, confirmed, shipping) thành delivered
+                $newStatus = 'delivered';
+                // Cập nhật lại giá trị validated['status'] để nó đi tiếp với delivered
+                $validated['status'] = 'delivered';
+            }
+            // -----------------------------------------------------------------------------
 
             // Validate luồng chuyển trạng thái
             $validTransitions = [
-                'pending' => ['confirmed', 'cancelled'],
-                'confirmed' => ['shipping', 'cancelled'],
+                'pending' => ['confirmed', 'cancelled', 'delivered'], // Thêm 'delivered' để cho phép chuyển trực tiếp (chỉ cho COD/MoMo/VNPay trường hợp đặc biệt)
+                'confirmed' => ['shipping', 'cancelled', 'delivered'], // Thêm 'delivered' để cho phép chuyển trực tiếp
                 'shipping' => ['delivered', 'cancelled'],
                 'delivered' => [],
                 'cancelled' => []
             ];
 
-            if (!in_array($newStatus, $validTransitions[$oldStatus])) {
+            // --- Bỏ qua kiểm tra chuyển trạng thái nếu đã được Ép buộc thành 'delivered' ---
+            // Nếu $oldStatus !== $newStatus (vì có thể $oldStatus đã là delivered), và $oldStatus không phải là 'cancelled'/'delivered' (đã kết thúc),
+            // VÀ $newStatus không nằm trong luồng cho phép.
+
+            // Nếu đơn hàng có PTTT là COD/MoMo/VNPay, chúng ta cần kiểm tra luồng.
+            // Nếu đơn hàng đã được ép buộc thành 'delivered' ở trên, chúng ta chỉ kiểm tra nếu trạng thái cũ đã kết thúc.
+
+            // Điều kiện kiểm tra luồng chuẩn:
+            $isInvalidTransition = !in_array($newStatus, $validTransitions[$oldStatus]);
+
+            // Cho phép chuyển trạng thái nếu:
+            // 1. Luồng là hợp lệ theo $validTransitions. HOẶC
+            // 2. Đơn hàng là Banking và được ép buộc thành 'delivered', và trạng thái cũ chưa phải là 'delivered' hay 'cancelled'.
+            $isAllowedByBanking = $shouldBeDelivered && !in_array($oldStatus, ['delivered', 'cancelled']);
+
+            if ($isInvalidTransition && !$isAllowedByBanking) {
                 return response()->json([
                     'success' => false,
                     'message' => "Không thể chuyển trạng thái từ '{$oldStatus}' sang '{$newStatus}'"
                 ], 400);
             }
 
-            // Nếu hủy đơn, hoàn trả tồn kho
+            // Nếu hủy đơn, hoàn trả tồn kho (Luôn giữ lại logic này)
             if ($newStatus === 'cancelled' && $oldStatus !== 'cancelled') {
                 DB::beginTransaction();
                 foreach ($order->items as $item) {
@@ -392,9 +425,10 @@ class OrderController extends Controller
                 }
                 $order->update(['status' => $newStatus]);
                 DB::commit();
-            } else {
+            } else if ($newStatus !== $oldStatus) { // Chỉ cập nhật nếu trạng thái thay đổi
                 $order->update(['status' => $newStatus]);
             }
+
 
             return response()->json([
                 'success' => true,
