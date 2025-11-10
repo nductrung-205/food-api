@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
     curl \
+    postgresql-client \ 
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
 # Cài Composer
