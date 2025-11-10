@@ -1,50 +1,46 @@
-# ==========================
-# Laravel Dockerfile (Render)
-# ==========================
+# ================================
+# ✅ Laravel + PHP-FPM + Caddy (Render)
+# ================================
+FROM php:8.2-fpm
 
-# Sử dụng PHP 8.2 CLI
-FROM php:8.2-cli
-
-# Cài đặt các gói và extension cần thiết
+# Cài đặt các gói cần thiết
 RUN apt-get update && apt-get install -y \
-    unzip \
-    git \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libonig-dev \
-    libxml2-dev \
-    libzip-dev \
-    zip \
-    curl \
-    postgresql-client \ 
-    libpq-dev \ 
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip pdo_pgsql
+    git unzip curl libpng-dev libjpeg-dev libfreetype6-dev \
+    libonig-dev libxml2-dev libzip-dev zip libpq-dev \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
 
-# Cài Composer
+# Cài composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Đặt thư mục làm việc
-WORKDIR /var/www
+# Tạo thư mục làm việc
+WORKDIR /var/www/html
 
-# Copy toàn bộ project vào container
+# Copy source code
 COPY . .
 
-# Cài các gói Laravel (production)
+# Cài dependency
 RUN composer install --no-dev --optimize-autoloader
 
-# Copy .env.example thành .env (nếu chưa có)
-RUN cp .env.example .env || true
+# Tạo APP_KEY nếu chưa có
+RUN php artisan key:generate --force || true
 
-# Tạo APP_KEY
-RUN php artisan key:generate --force
+# Dọn cache
+RUN php artisan config:clear && php artisan route:clear && php artisan view:clear
 
-# Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Cache config & route để tăng tốc
+RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
 
-# Mở port Render
+# Cài Caddy web server
+RUN apt-get install -y caddy
+
+# Thiết lập quyền cho storage
+RUN chmod -R 775 storage bootstrap/cache
+
+# Copy cấu hình Caddy
+COPY Caddyfile /etc/caddy/Caddyfile
+
+# Expose cổng Render
 EXPOSE 8000
 
-# Lệnh khởi chạy container
-CMD ["/entrypoint.sh"]
+# Start PHP-FPM và Caddy
+CMD service php8.2-fpm start && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile

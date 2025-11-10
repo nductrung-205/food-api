@@ -5,3 +5,40 @@ services:
     plan: free
     region: oregon
     dockerfilePath: ./Dockerfile
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_URL
+        value: https://food-api-xl8n.onrender.com
+      - key: LOG_CHANNEL
+        value: stack
+      - key: GEMINI_API_KEY
+        sync: false      # thêm thủ công trong dashboard Render
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: food-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: food-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: food-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: food-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: food-db
+          property: password
+
+databases:
+  - name: food-db
+    plan: free
