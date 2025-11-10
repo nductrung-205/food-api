@@ -18,6 +18,7 @@ APP_KEY=${APP_KEY}
 
 echo "💡 Environment Check: DB_HOST=$DB_HOST, DB_USER=$DB_USERNAME"
 
+echo "🔑 GEMINI_API_KEY is set: ${GEMINI_API_KEY:+YES}"
 # ==========================
 # 2️⃣ Chờ PostgreSQL sẵn sàng
 # ==========================
