@@ -45,7 +45,8 @@ php artisan view:clear
 php artisan event:clear
 
 php artisan storage:link 
-php artisan config:cache
+php artisan config:clear  # Xóa cache cũ
+php artisan config:cache 
 php artisan route:cache
 php artisan view:cache
 
