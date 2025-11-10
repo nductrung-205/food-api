@@ -38,24 +38,7 @@ COPY Caddyfile /etc/caddy/Caddyfile
 EXPOSE 8000
 
 # --- Auto migrate & seed if database empty ---
-RUN php artisan migrate --force || true && \
-    php -r '$count=0;
-    require "vendor/autoload.php";
-    $app=require_once "bootstrap/app.php";
-    $kernel=$app->make(Illuminate\Contracts\Console\Kernel::class);
-    $kernel->bootstrap();
-    try {
-        $count=\App\Models\Product::count();
-    } catch (Exception $e) {
-        echo "⚠️ Skip seed check: {$e->getMessage()}\n";
-    }
-    if($count==0){
-        echo "🌱 Database empty, seeding...\n";
-        shell_exec("php artisan db:seed --force");
-    } else {
-        echo "✅ Database has data ($count products), skipping seed.\n";
-    }'
-
+RUN php artisan migrate --force || true && php docker-seed.php
 
 # 1️⃣1️⃣ Start cả PHP-FPM & Caddy trong 1 container (foreground)
 CMD php-fpm -D && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
