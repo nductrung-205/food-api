@@ -37,5 +37,22 @@ COPY Caddyfile /etc/caddy/Caddyfile
 # 🔟 Mở cổng Render
 EXPOSE 8000
 
+# --- Auto migrate & seed if database empty ---
+RUN php artisan migrate --force || true \
+ && php -r "
+    try {
+      \$count = \App\Models\Product::count();
+      if (\$count == 0) {
+        echo \"🌱 Database empty, seeding...\\n\";
+        shell_exec('php artisan db:seed --force');
+      } else {
+        echo \"✅ Database has data (\$count products), skipping seed.\\n\";
+      }
+    } catch (Exception \$e) {
+      echo '⚠️  Skip seed check: ' . \$e->getMessage() . \"\\n\";
+    }
+  "
+
+
 # 1️⃣1️⃣ Start cả PHP-FPM & Caddy trong 1 container (foreground)
 CMD php-fpm -D && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
