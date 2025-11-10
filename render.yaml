@@ -15,7 +15,7 @@ services:
       - key: LOG_CHANNEL
         value: stack
       - key: GEMINI_API_KEY
-        sync: false      # thêm thủ công trong dashboard Render
+        sync: false      # thêm trong Dashboard
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
