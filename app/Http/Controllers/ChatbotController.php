@@ -33,15 +33,11 @@ class ChatbotController extends Controller
     }
 
     /**
-     * Thử gọi Gemini API với nhiều phương án
+     * Thử gọi Gemini API
      */
     private function callGeminiAPI($apiKey, $conversationText)
     {
-        // Danh sách các endpoint để thử (theo thứ tự ưu tiên)
-        $endpoints = [
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
-        ];
+        $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
         $requestData = [
             'contents' => [
@@ -54,197 +50,180 @@ class ChatbotController extends Controller
             'generationConfig' => [
                 'temperature' => 0.7,
                 'maxOutputTokens' => 400,
-                'topP' => 0.95,
-                'topK' => 40
-            ],
-            'safetySettings' => [
-                [
-                    'category' => 'HARM_CATEGORY_HARASSMENT',
-                    'threshold' => 'BLOCK_NONE'
-                ],
-                [
-                    'category' => 'HARM_CATEGORY_HATE_SPEECH',
-                    'threshold' => 'BLOCK_NONE'
-                ],
-                [
-                    'category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                    'threshold' => 'BLOCK_NONE'
-                ],
-                [
-                    'category' => 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                    'threshold' => 'BLOCK_NONE'
-                ]
             ]
         ];
 
-        $lastError = null;
+        try {
+            Log::info("🔄 Gọi Gemini API", [
+                'endpoint' => $endpoint,
+                'api_key_length' => strlen($apiKey)
+            ]);
 
-        // Thử từng endpoint
-        foreach ($endpoints as $index => $endpoint) {
-            try {
-                Log::info("🔄 Đang thử endpoint " . ($index + 1) . ": " . $endpoint);
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                ])
+                ->post($endpoint . "?key={$apiKey}", $requestData);
 
-                $response = Http::timeout(30)
-                    ->withHeaders([
-                        'Content-Type' => 'application/json',
-                    ])
-                    ->post($endpoint . "?key={$apiKey}", $requestData);
+            Log::info("📥 Response từ Gemini", [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
 
-                if ($response->successful()) {
-                    Log::info("✅ Thành công với endpoint: " . $endpoint);
-                    return [
-                        'success' => true,
-                        'data' => $response->json()
-                    ];
-                } else {
-                    $lastError = [
-                        'status' => $response->status(),
-                        'body' => $response->body()
-                    ];
-                    Log::warning("❌ Endpoint thất bại: " . $endpoint, $lastError);
-                }
-            } catch (\Exception $e) {
-                $lastError = [
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json()
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]
+            ];
+
+        } catch (\Exception $e) {
+            Log::error("💥 Exception khi gọi Gemini", [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => [
                     'status' => 500,
                     'body' => $e->getMessage()
-                ];
-                Log::warning("❌ Exception với endpoint: " . $endpoint, ['error' => $e->getMessage()]);
-            }
+                ]
+            ];
         }
-
-        // Tất cả endpoints đều thất bại
-        return [
-            'success' => false,
-            'error' => $lastError
-        ];
     }
 
     /**
-     * API Chat sử dụng Google Gemini (MIỄN PHÍ)
+     * API Chat sử dụng Google Gemini
      */
     public function chat(Request $request)
     {
-        // Thêm CORS headers
-        header('Access-Control-Allow-Origin: https://ban-do-an.vercel.app');
-        header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization');
-        header('Access-Control-Allow-Credentials: true');
-
-        // Xử lý preflight request
-        if ($request->method() === 'OPTIONS') {
-            return response()->json([], 200);
-        }
-
         try {
+            Log::info("🎯 Nhận request chat", [
+                'method' => $request->method(),
+                'origin' => $request->header('Origin'),
+                'has_message' => $request->has('message')
+            ]);
+
+            // Xử lý preflight
+            if ($request->method() === 'OPTIONS') {
+                return response()->json([], 200)
+                    ->header('Access-Control-Allow-Origin', 'https://ban-do-an.vercel.app')
+                    ->header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+                    ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+                    ->header('Access-Control-Allow-Credentials', 'true');
+            }
+
             $userMessage = $request->input('message');
             $chatHistory = $request->input('chatHistory', []);
 
             if (empty($userMessage)) {
-                return response()->json(['error' => 'Tin nhắn không được để trống.'], 400);
+                Log::warning("⚠️ Tin nhắn trống");
+                return response()->json(['error' => 'Tin nhắn không được để trống.'], 400)
+                    ->header('Access-Control-Allow-Origin', 'https://ban-do-an.vercel.app')
+                    ->header('Access-Control-Allow-Credentials', 'true');
             }
 
             // Kiểm tra API key
             $apiKey = env('GEMINI_API_KEY');
-            if (empty($apiKey) || $apiKey === 'YOUR_GEMINI_API_KEY_HERE') {
-                Log::error('GEMINI_API_KEY chưa được cấu hình đúng trong file .env');
+            Log::info("🔑 API Key check", [
+                'exists' => !empty($apiKey),
+                'length' => strlen($apiKey ?? ''),
+                'starts_with' => substr($apiKey ?? '', 0, 10)
+            ]);
+
+            if (empty($apiKey)) {
+                Log::error('❌ GEMINI_API_KEY không tồn tại');
                 return response()->json([
-                    'error' => 'Hệ thống AI chưa được cấu hình. Vui lòng liên hệ quản trị viên.'
-                ], 500);
+                    'error' => 'Hệ thống AI chưa được cấu hình. Vui lòng thêm GEMINI_API_KEY.'
+                ], 500)
+                    ->header('Access-Control-Allow-Origin', 'https://ban-do-an.vercel.app')
+                    ->header('Access-Control-Allow-Credentials', 'true');
             }
 
             // Lấy menu
+            Log::info("📋 Đang lấy menu...");
             $currentMenuItems = $this->getMenuItems();
+            Log::info("📋 Menu items count: " . count($currentMenuItems));
+
             $menuText = count($currentMenuItems) > 0 
                 ? json_encode($currentMenuItems, JSON_UNESCAPED_UNICODE)
                 : "Hiện tại chưa có thông tin thực đơn chi tiết.";
 
-            $systemPrompt = "Bạn là trợ lý ảo thân thiện của nhà hàng \"Ẩm Thực Việt\", chuyên về các món ăn truyền thống Việt Nam.
+            $systemPrompt = "Bạn là trợ lý ảo của nhà hàng Ẩm Thực Việt. Trả lời ngắn gọn, thân thiện.
 
-📋 THÔNG TIN NHÀ HÀNG:
-- Thực đơn: {$menuText}
-- Địa chỉ: 123 Đường Nguyễn Huệ, Quận 1, TP.HCM
-- Giờ mở cửa: 9:00 - 22:00 hàng ngày
-- Số điện thoại đặt hàng: 0912-345-678
+Thực đơn: {$menuText}
 
-📌 NHIỆM VỤ CỦA BẠN:
-- Trả lời thân thiện, nhiệt tình về thực đơn, giá cả, địa chỉ, giờ mở cửa
-- Gợi ý món ăn phù hợp với nhu cầu khách hàng
-- Hướng dẫn cách đặt món qua điện thoại hoặc website
-- Trả lời ngắn gọn, súc tích (1-3 câu), dùng emoji phù hợp
+Hướng dẫn:
+- Trả lời về món ăn, giá cả, địa chỉ
+- Giờ mở cửa: 9:00-22:00
+- SĐT: 0912-345-678";
 
-❌ KHÔNG được:
-- Trả lời về chủ đề không liên quan đến nhà hàng
-- Đưa ra thông tin sai lệch về giá hoặc món ăn không có trong menu";
+            $conversationText = $systemPrompt . "\n\nKhách: {$userMessage}\nTrợ lý:";
 
-            $conversationText = $systemPrompt . "\n\n===== CUỘC HỘI THOẠI =====\n";
-            
-            $recentHistory = array_slice($chatHistory, -5);
-            foreach ($recentHistory as $msg) {
-                if (isset($msg['sender']) && isset($msg['text'])) {
-                    $role = $msg['sender'] === 'user' ? 'Khách hàng' : 'Trợ lý';
-                    $conversationText .= "{$role}: {$msg['text']}\n";
-                }
-            }
-            
-            $conversationText .= "Khách hàng: {$userMessage}\nTrợ lý:";
-
-            Log::info('📤 Đang gửi request đến Google Gemini API', [
-                'user_message' => $userMessage,
-                'history_count' => count($recentHistory)
+            Log::info("📤 Gửi đến Gemini", [
+                'message_length' => strlen($conversationText)
             ]);
 
-            // Gọi API với nhiều phương án dự phòng
+            // Gọi API
             $result = $this->callGeminiAPI($apiKey, $conversationText);
 
             if (!$result['success']) {
                 $error = $result['error'];
-                Log::error('❌ Tất cả endpoints Gemini đều thất bại', $error);
-                
-                $statusCode = $error['status'] ?? 500;
-                
-                if ($statusCode === 400) {
-                    return response()->json([
-                        'error' => 'API key không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ quản trị viên.'
-                    ], 500);
-                } elseif ($statusCode === 429) {
-                    return response()->json([
-                        'error' => 'Đã vượt quá giới hạn request. Vui lòng thử lại sau ít phút.'
-                    ], 500);
-                }
+                Log::error('❌ Gemini API thất bại', $error);
                 
                 return response()->json([
-                    'error' => 'Không thể kết nối đến AI. Vui lòng thử lại sau.'
-                ], 500);
+                    'error' => 'AI không phản hồi. Vui lòng thử lại.',
+                    'debug' => [
+                        'status' => $error['status'],
+                        'message' => substr($error['body'], 0, 200)
+                    ]
+                ], 500)
+                    ->header('Access-Control-Allow-Origin', 'https://ban-do-an.vercel.app')
+                    ->header('Access-Control-Allow-Credentials', 'true');
             }
 
             $responseData = $result['data'];
 
-            // Kiểm tra lỗi trong response
+            // Kiểm tra lỗi
             if (isset($responseData['error'])) {
-                $errorMessage = $responseData['error']['message'] ?? 'Lỗi không xác định';
-                Log::error('❌ Lỗi từ Gemini API', ['error' => $errorMessage]);
-                return response()->json(['error' => 'AI gặp lỗi: ' . $errorMessage], 500);
+                $errorMsg = $responseData['error']['message'] ?? 'Lỗi không xác định';
+                Log::error('❌ Lỗi từ Gemini', ['error' => $errorMsg]);
+                return response()->json([
+                    'error' => 'AI gặp lỗi: ' . $errorMsg
+                ], 500)
+                    ->header('Access-Control-Allow-Origin', 'https://ban-do-an.vercel.app')
+                    ->header('Access-Control-Allow-Credentials', 'true');
             }
 
-            // Lấy text từ response
+            // Lấy reply
             if (isset($responseData['candidates'][0]['content']['parts'][0]['text'])) {
-                $reply = $responseData['candidates'][0]['content']['parts'][0]['text'];
-                $reply = trim($reply);
+                $reply = trim($responseData['candidates'][0]['content']['parts'][0]['text']);
                 
-                Log::info('✅ Nhận phản hồi thành công từ Gemini', [
-                    'reply_length' => strlen($reply)
-                ]);
+                Log::info('✅ Thành công', ['reply_length' => strlen($reply)]);
                 
-                return response()->json(['reply' => $reply]);
+                return response()->json(['reply' => $reply])
+                    ->header('Access-Control-Allow-Origin', 'https://ban-do-an.vercel.app')
+                    ->header('Access-Control-Allow-Credentials', 'true');
             }
 
-            Log::error('❌ Không có phản hồi hợp lệ từ Gemini', ['response' => $responseData]);
+            Log::error('❌ Không có text trong response', ['response' => $responseData]);
             return response()->json([
-                'error' => 'Không thể nhận phản hồi từ AI. Vui lòng thử lại.'
-            ], 500);
+                'error' => 'Không nhận được phản hồi từ AI.'
+            ], 500)
+                ->header('Access-Control-Allow-Origin', 'https://ban-do-an.vercel.app')
+                ->header('Access-Control-Allow-Credentials', 'true');
 
         } catch (\Exception $e) {
-            Log::error('💥 Exception khi gọi Gemini API', [
+            Log::error('💥 Exception trong chat()', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -252,8 +231,10 @@ class ChatbotController extends Controller
             ]);
             
             return response()->json([
-                'error' => 'Rất tiếc, hệ thống đang gặp sự cố. Vui lòng thử lại sau.'
-            ], 500);
+                'error' => 'Lỗi hệ thống: ' . $e->getMessage()
+            ], 500)
+                ->header('Access-Control-Allow-Origin', 'https://ban-do-an.vercel.app')
+                ->header('Access-Control-Allow-Credentials', 'true');
         }
     }
 }
