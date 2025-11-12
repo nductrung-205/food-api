@@ -53,7 +53,15 @@ Route::get('/categories/{id}/products', [ProductController::class, 'getByCategor
 // Lấy theo slug
 Route::get('/category-slug/{slug}/products', [CategoryController::class, 'productsBySlug']);
 
-Route::post('/chat', [ChatbotController::class, 'chat']);
+Route::get('/chat/test', function() {
+    return response()->json([
+        'status' => 'ok',
+        'api_key_exists' => !empty(env('GEMINI_API_KEY')),
+        'api_key_preview' => substr(env('GEMINI_API_KEY'), 0, 10) . '...',
+        'db_connected' => \Illuminate\Support\Facades\DB::connection()->getPdo() ? true : false,
+        'products_count' => \App\Models\Product::count(),
+    ]);
+});
 
 Route::prefix('vnpay')->group(function () {
     Route::post('/create-payment', [VNPayController::class, 'createPayment']);
