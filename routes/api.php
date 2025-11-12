@@ -53,7 +53,7 @@ Route::get('/categories/{id}/products', [ProductController::class, 'getByCategor
 // Lấy theo slug
 Route::get('/category-slug/{slug}/products', [CategoryController::class, 'productsBySlug']);
 
-Route::get('/chat/debug', function() {
+Route::get('/chat/debug', function () {
     try {
         return response()->json([
             'status' => 'ok',
@@ -88,9 +88,9 @@ Route::prefix('vnpay')->group(function () {
 });
 
 // routes/api.php
-    Route::post('/momo/create-payment', [MomoController::class, 'createPayment']);
-    Route::post('/momo/notify', [MomoController::class, 'notify']);
-    Route::get('/momo/status/{orderId}', [MomoController::class, 'transactionStatus']);
+Route::post('/momo/create-payment', [MomoController::class, 'createPayment']);
+Route::post('/momo/notify', [MomoController::class, 'notify']);
+Route::get('/momo/status/{orderId}', [MomoController::class, 'transactionStatus']);
 
 /*
 |--------------------------------------------------------------------------
