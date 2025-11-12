@@ -16,17 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
 
-        // Thêm CORS middleware vào đầu nhóm API middleware
-        // Điều này đảm bảo nó được xử lý trước các middleware khác trong API
+        // Đảm bảo CORS được xử lý đầu tiên
         $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
-
-        // Các cấu hình middleware khác nếu có, ví dụ cho nhóm 'web'
-        // $middleware->web(append: [
-        //     // \App\Http\Middleware\AnotherWebMiddleware::class,
-        // ]);
+        // Thêm global middleware cho tất cả các requests
+        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

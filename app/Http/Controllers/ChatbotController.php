@@ -16,10 +16,10 @@ class ChatbotController extends Controller
     {
         try {
             $products = Product::select('name', 'description', 'price')
-                              ->take(20)
-                              ->get();
+                ->take(20)
+                ->get();
 
-            return $products->map(function($product) {
+            return $products->map(function ($product) {
                 return [
                     'name' => $product->name,
                     'description' => $product->description ?? 'Món ăn ngon',
@@ -114,8 +114,19 @@ class ChatbotController extends Controller
      */
     public function chat(Request $request)
     {
+        header('Access-Control-Allow-Origin: https://ban-do-an.vercel.app');
+        header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization');
+        header('Access-Control-Allow-Credentials: true');
+
+        // Log để debug
+        Log::info('Chat request received', [
+            'origin' => $request->header('Origin'),
+            'method' => $request->method(),
+        ]);
+
         $userMessage = $request->input('message');
-        $chatHistory = $request->input('chatHistory', []);        
+        $chatHistory = $request->input('chatHistory', []);
 
         if (empty($userMessage)) {
             return response()->json(['error' => 'Tin nhắn không được để trống.'], 400);
@@ -131,7 +142,7 @@ class ChatbotController extends Controller
             }
 
             $currentMenuItems = $this->getMenuItems();
-            $menuText = count($currentMenuItems) > 0 
+            $menuText = count($currentMenuItems) > 0
                 ? json_encode($currentMenuItems, JSON_UNESCAPED_UNICODE)
                 : "Hiện tại chưa có thông tin thực đơn chi tiết.";
 
@@ -154,13 +165,13 @@ class ChatbotController extends Controller
 - Đưa ra thông tin sai lệch về giá hoặc món ăn không có trong menu";
 
             $conversationText = $systemPrompt . "\n\n===== CUỘC HỘI THOẠI =====\n";
-            
+
             $recentHistory = array_slice($chatHistory, -5);
             foreach ($recentHistory as $msg) {
                 $role = $msg['sender'] === 'user' ? 'Khách hàng' : 'Trợ lý';
                 $conversationText .= "{$role}: {$msg['text']}\n";
             }
-            
+
             $conversationText .= "Khách hàng: {$userMessage}\nTrợ lý:";
 
             Log::info('Đang gửi request đến Google Gemini API', [
@@ -173,9 +184,9 @@ class ChatbotController extends Controller
             if (!$result['success']) {
                 $error = $result['error'];
                 Log::error('Tất cả endpoints Gemini đều thất bại', $error);
-                
+
                 $statusCode = $error['status'] ?? 500;
-                
+
                 if ($statusCode === 400) {
                     return response()->json([
                         'error' => 'API key không hợp lệ hoặc đã hết hạn. Vui lòng tạo key mới tại https://aistudio.google.com/apikey'
@@ -185,7 +196,7 @@ class ChatbotController extends Controller
                         'error' => 'Đã vượt quá giới hạn request. Vui lòng thử lại sau ít phút.'
                     ], 500);
                 }
-                
+
                 return response()->json([
                     'error' => 'Không thể kết nối đến AI. Vui lòng thử lại sau hoặc liên hệ quản trị viên.'
                 ], 500);
@@ -202,11 +213,11 @@ class ChatbotController extends Controller
             if (isset($responseData['candidates'][0]['content']['parts'][0]['text'])) {
                 $reply = $responseData['candidates'][0]['content']['parts'][0]['text'];
                 $reply = trim($reply);
-                
+
                 Log::info('✅ Nhận phản hồi thành công từ Gemini', [
                     'reply_length' => strlen($reply)
                 ]);
-                
+
                 return response()->json(['reply' => $reply]);
             }
 
@@ -214,14 +225,13 @@ class ChatbotController extends Controller
             return response()->json([
                 'error' => 'Không thể nhận phản hồi từ AI. Vui lòng thử lại.'
             ], 500);
-
         } catch (\Exception $e) {
             Log::error('Exception khi gọi Gemini API', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
-            
+
             return response()->json([
                 'error' => 'Rất tiếc, hệ thống đang gặp sự cố. Vui lòng thử lại sau.'
             ], 500);
