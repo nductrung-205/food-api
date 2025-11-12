@@ -16,12 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
 
-        // Thêm CORS cho toàn bộ API
+        // Đảm bảo CORS được xử lý đầu tiên
         $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
-        
-        // Thêm globally
+
+        // Thêm global middleware cho tất cả các requests
         $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
