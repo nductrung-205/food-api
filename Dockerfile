@@ -37,8 +37,11 @@ COPY Caddyfile /etc/caddy/Caddyfile
 # 🔟 Mở cổng Render
 EXPOSE 8000
 
-# --- Auto migrate & seed if database empty ---
-RUN php artisan migrate --force || true && php docker-seed.php
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]
+
 
 # 1️⃣1️⃣ Start cả PHP-FPM & Caddy trong 1 container (foreground)
 CMD php-fpm -D && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
