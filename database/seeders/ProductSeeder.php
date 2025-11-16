@@ -9,6 +9,7 @@ class ProductSeeder extends Seeder
 {
     public function run(): void
     {
+
         $products = [
             // Món chính (category_id = 1)
             [
@@ -130,7 +131,7 @@ class ProductSeeder extends Seeder
                 'stock' => 200,
                 'image' => 'https://sieuthinguyenlieu.com/assets/uploads/images/W1A57nEO14CX_tra-chanh-sa-web.jpg',
             ],
-            
+
             [
                 'category_id' => 2,
                 'name' => 'Sinh tố bơ',
@@ -216,10 +217,21 @@ class ProductSeeder extends Seeder
                 'stock' => 150,
                 'image' => 'https://file.hstatic.net/200000721249/file/cach_lam_kem_dua_matcha_92c03c90fe6c4e22806e1126feedc319.jpg',
             ],
+
+
         ];
 
         foreach ($products as $p) {
             Product::create($p);
+        }
+
+        $total = 10000;
+
+        for ($i = 1; $i <= $total; $i++) {
+            Product::factory()->create([
+                'name' => "Sản phẩm $i",
+                'slug' => "san-pham-$i",
+            ]);
         }
     }
 }

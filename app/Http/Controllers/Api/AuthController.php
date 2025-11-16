@@ -18,23 +18,32 @@ class AuthController extends Controller
     {
         $request->validate([
             'fullname' => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
+            'email'    => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
+            'phone'    => 'nullable|string|max:20',
+            'address'  => 'nullable|string|max:500',
         ], [
             'fullname.required' => 'Vui lòng nhập họ tên',
+            'fullname.max'      => 'Họ tên không được quá 255 ký tự',
+
             'email.required'    => 'Vui lòng nhập email',
             'email.email'       => 'Email không hợp lệ',
+            'email.max'         => 'Email không được quá 255 ký tự',
             'email.unique'      => 'Email đã tồn tại',
+
             'password.required' => 'Vui lòng nhập mật khẩu',
             'password.min'      => 'Mật khẩu phải có ít nhất 6 ký tự',
-            'password.confirmed'=> 'Xác nhận mật khẩu không khớp',
+            'password.confirmed' => 'Xác nhận mật khẩu không khớp',
+
+            'phone.max'         => 'Số điện thoại không được quá 20 ký tự',
+            'address.max'       => 'Địa chỉ không được quá 500 ký tự',
         ]);
 
         $user = User::create([
             'fullname' => $request->fullname,
             'email'    => $request->email,
             'password' => Hash::make($request->password),
-            'role'     => User::ROLE_USER ?? 1, 
+            'role'     => User::ROLE_USER ?? 1,
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -51,23 +60,37 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+        // Validate dữ liệu
         $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
+            'email'    => 'required|string|email|max:255',
+            'password' => 'required|string|min:6|max:64',
         ], [
-            'email.required'    => 'Vui lòng nhập email',
+            'email.required' => 'Vui lòng nhập email',
+            'email.email'    => 'Email không hợp lệ',
+            'email.max'      => 'Email quá dài, tối đa 255 ký tự',
+
             'password.required' => 'Vui lòng nhập mật khẩu',
+            'password.min'      => 'Mật khẩu phải có ít nhất 6 ký tự',
+            'password.max'      => 'Mật khẩu không được vượt quá 64 ký tự',
         ]);
 
+
+        // Kiểm tra email tồn tại
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Sai email hoặc mật khẩu'], 401);
+        if (!$user) {
+            return response()->json(['message' => 'Email không tồn tại'], 404);
         }
 
-        // Xóa token cũ để tránh trùng lặp (nếu cần)
+        // Kiểm tra mật khẩu
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Sai mật khẩu'], 401);
+        }
+
+        // Xóa token cũ
         $user->tokens()->delete();
 
+        // Tạo token mới
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -76,6 +99,7 @@ class AuthController extends Controller
             'token'   => $token,
         ]);
     }
+
 
     /**
      * Đăng xuất
@@ -158,6 +182,7 @@ class AuthController extends Controller
             'phone'    => 'sometimes|nullable|string|max:20',
             'address'  => 'sometimes|nullable|string|max:500',
         ]);
+
 
         $user->update($request->only(['fullname', 'phone', 'address']));
 
