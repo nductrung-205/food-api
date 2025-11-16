@@ -28,17 +28,6 @@ use Illuminate\Support\Facades\Artisan;
 // ⚠️ chỉ tạm dùng để test
 Route::get('/users', [UserController::class, 'index']);
 
-Route::get('/run-seed', function () {
-    try {
-        Artisan::call('db:seed --force');
-        return nl2br(Artisan::output());
-    } catch (\Exception $e) {
-        return "❌ ERROR: " . $e->getMessage();
-    }
-});
-
-
-
 
 /*
 |--------------------------------------------------------------------------

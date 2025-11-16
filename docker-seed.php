@@ -11,8 +11,15 @@ try {
     exit(0);
 }
 
-if ($count == 0) {
-    echo "🌱 Database empty, seeding...\n";
+// if ($count == 0) {
+//     echo "🌱 Database empty, seeding...\n";
+//     shell_exec('php artisan db:seed --force');
+// } else {
+//     echo "✅ Database has data ($count products), skipping seed.\n";
+// }
+
+if ($count < 20000) {
+    echo "🌱 Product count ($count) < 20000. Seeding...\n";
     shell_exec('php artisan db:seed --force');
 } else {
     echo "✅ Database has data ($count products), skipping seed.\n";
