@@ -14,15 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
-        ]);
-
-        // Đảm bảo CORS được xử lý đầu tiên
-        $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
-        ]);
-
-        // Thêm global middleware cho tất cả các requests
-        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
+        ]);        
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

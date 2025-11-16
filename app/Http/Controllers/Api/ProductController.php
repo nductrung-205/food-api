@@ -61,7 +61,7 @@ class ProductController extends Controller
             $query->orderBy($sortBy, $sortOrder);
 
             // Phân trang
-            $perPage = $request->get('per_page', 10);
+            $perPage = $request->get('per_page', 12);
             $products = $query->paginate($perPage);
 
             return response()->json([
@@ -392,7 +392,7 @@ class ProductController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240', 
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
 
         try {
@@ -427,5 +427,15 @@ class ProductController extends Controller
                 'error_detail' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getAllWithoutPagination()
+    {
+        return response()->json([
+            'data' => Product::with('category')
+                ->where('status', true)
+                ->orderBy('id', 'desc')
+                ->get()
+        ]);
     }
 }

@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\{
     PaymentController,
     ReviewController,
     BannerController,
+    ChatbotController,
     CouponController,
     DeliveryController,
     NotificationController,
@@ -19,7 +20,7 @@ use App\Http\Controllers\Api\{
     VNPayController,
     ForgotPasswordController
 };
-use App\Http\Controllers\ChatbotController;
+
 use App\Http\Controllers\MomoController;
 
 // ⚠️ chỉ tạm dùng để test
@@ -41,6 +42,7 @@ Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'
 | PUBLIC APIs (Không cần đăng nhập)
 |--------------------------------------------------------------------------
 */
+Route::get('/products/all', [ProductController::class, 'getAllWithoutPagination']);
 Route::get('/products',                        [ProductController::class, 'index']);
 Route::get('/products/{id}',                   [ProductController::class, 'show']);
 Route::get('/categories',                      [CategoryController::class, 'index']);
@@ -52,33 +54,6 @@ Route::get('/categories/{id}/products', [ProductController::class, 'getByCategor
 
 // Lấy theo slug
 Route::get('/category-slug/{slug}/products', [CategoryController::class, 'productsBySlug']);
-
-Route::get('/chat/debug', function () {
-    try {
-        return response()->json([
-            'status' => 'ok',
-            'php_version' => PHP_VERSION,
-            'laravel_version' => app()->version(),
-            'env' => [
-                'APP_ENV' => env('APP_ENV'),
-                'APP_DEBUG' => env('APP_DEBUG'),
-                'GEMINI_API_KEY_EXISTS' => !empty(env('GEMINI_API_KEY')),
-                'GEMINI_API_KEY_LENGTH' => strlen(env('GEMINI_API_KEY') ?? ''),
-                'GEMINI_API_KEY_START' => substr(env('GEMINI_API_KEY') ?? '', 0, 10),
-            ],
-            'database' => [
-                'connected' => \Illuminate\Support\Facades\DB::connection()->getPdo() ? true : false,
-                'products_count' => \App\Models\Product::count(),
-            ],
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ], 500);
-    }
-});
 
 Route::post('/chat', [ChatbotController::class, 'chat']);
 
