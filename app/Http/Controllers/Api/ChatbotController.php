@@ -11,6 +11,11 @@ class ChatbotController extends Controller
 {
     public function chat(Request $request)
     {
+        Log::info('Chat request received', [
+            'origin' => $request->header('Origin'),
+            'method' => $request->method(),
+        ]);
+
         $apiKey = config('services.google.api_key');
 
         Log::info('API Key Check', [

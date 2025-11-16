@@ -12,15 +12,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // ✅ THÊM CORS MIDDLEWARE CHO API
+        // Custom CORS middleware (ưu tiên cao nhất)
         $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
+            \App\Http\Middleware\CorsMiddleware::class,
         ]);
-        
+
         // Middleware alias
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
-        ]);        
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
