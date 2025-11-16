@@ -11,137 +11,165 @@ class ChatbotController extends Controller
 {
     public function chat(Request $request)
     {
-        Log::info('Chat request received', [
-            'origin' => $request->header('Origin'),
-            'method' => $request->method(),
-        ]);
+        try {
+            Log::info('Chat request received', [
+                'origin' => $request->header('Origin'),
+                'method' => $request->method(),
+                'ip' => $request->ip(),
+            ]);
 
-        $apiKey = config('services.google.api_key');
+            // Kiểm tra API Key
+            $apiKey = config('services.google.api_key');
+            
+            Log::info('API Key Check', [
+                'has_key' => !empty($apiKey),
+                'key_length' => $apiKey ? strlen($apiKey) : 0,
+                'config_exists' => config('services.google') !== null,
+            ]);
 
-        Log::info('API Key Check', [
-            'has_key' => !empty($apiKey),
-            'key_length' => strlen($apiKey ?? ''),
-            'env_value' => env('GOOGLE_API_KEY') ? 'exists' : 'missing'
-        ]);
+            if (!$apiKey) {
+                Log::error('Missing GOOGLE_API_KEY in config');
+                return response()->json([
+                    'error' => 'Chatbot tạm thời không khả dụng. Vui lòng thử lại sau.'
+                ], 500);
+            }
 
-        if (!$apiKey) {
-            return response()->json(['error' => 'Thiếu API Key'], 500);
-        }
+            // Validate request
+            $userMessage = $request->input('message');
+            if (!$userMessage) {
+                return response()->json(['error' => 'Vui lòng nhập tin nhắn'], 400);
+            }
 
-        $userMessage = $request->input('message');
-        if (!$userMessage) {
-            return response()->json(['error' => 'Thiếu message'], 400);
-        }
+            // Lấy chatHistory từ frontend
+            $chatHistory = $request->input('chatHistory', []);
 
-        // Lấy chatHistory từ frontend (đã theo format Gemini)
-        $chatHistory = $request->input('chatHistory', []);
+            // Thêm tin nhắn người dùng mới
+            $chatHistory[] = [
+                'role' => 'user',
+                'parts' => [['text' => $userMessage]]
+            ];
 
-        // Thêm tin nhắn người dùng mới
-        $chatHistory[] = [
-            'role' => 'user',
-            'parts' => [['text' => $userMessage]]
-        ];
-
-        // System instruction
-        $systemInstruction = [
-            'parts' => [
-                [
-                    'text' => 'Bạn là trợ lý ảo thông minh của nhà hàng "Ẩm Thực Việt". ' .
-                        'Nhiệm vụ của bạn là tư vấn món ăn, giải đáp thắc mắc về thực đơn, ' .
-                        'giá cả, và hỗ trợ khách hàng đặt món. Hãy thân thiện, nhiệt tình và chuyên nghiệp. ' .
-                        'Khi khách hỏi về món ăn hoặc thực đơn, hãy sử dụng function get_menu_items hoặc search_dish để lấy thông tin chính xác.'
+            // System instruction
+            $systemInstruction = [
+                'parts' => [
+                    [
+                        'text' => 'Bạn là trợ lý ảo thông minh của nhà hàng "Ẩm Thực Việt". ' .
+                            'Nhiệm vụ của bạn là tư vấn món ăn, giải đáp thắc mắc về thực đơn, ' .
+                            'giá cả, và hỗ trợ khách hàng đặt món. Hãy thân thiện, nhiệt tình và chuyên nghiệp. ' .
+                            'Khi khách hỏi về món ăn hoặc thực đơn, hãy sử dụng function get_menu_items hoặc search_dish để lấy thông tin chính xác.'
+                    ]
                 ]
-            ]
-        ];
+            ];
 
-        // Khai báo function cho AI
-        $tools = [
-            [
-                'functionDeclarations' => [
-                    [
-                        'name' => 'get_menu_items',
-                        'description' => 'Lấy danh sách món ăn theo phân loại. Các phân loại có sẵn: "món chính", "đồ uống", "món phụ", "tráng miệng"',
-                        'parameters' => [
-                            'type' => 'object',
-                            'properties' => [
-                                'category' => [
-                                    'type' => 'string',
-                                    'description' => 'Tên phân loại món ăn (ví dụ: "món chính", "đồ uống")',
-                                    'enum' => ['món chính', 'đồ uống', 'món phụ', 'tráng miệng']
-                                ]
-                            ],
-                            'required' => ['category']
-                        ]
-                    ],
-                    [
-                        'name' => 'search_dish',
-                        'description' => 'Tìm kiếm món ăn theo tên',
-                        'parameters' => [
-                            'type' => 'object',
-                            'properties' => [
-                                'dish_name' => [
-                                    'type' => 'string',
-                                    'description' => 'Tên món ăn cần tìm'
-                                ]
-                            ],
-                            'required' => ['dish_name']
+            // Khai báo function cho AI
+            $tools = [
+                [
+                    'functionDeclarations' => [
+                        [
+                            'name' => 'get_menu_items',
+                            'description' => 'Lấy danh sách món ăn theo phân loại',
+                            'parameters' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'category' => [
+                                        'type' => 'string',
+                                        'description' => 'Tên phân loại món ăn'
+                                    ]
+                                ],
+                                'required' => ['category']
+                            ]
+                        ],
+                        [
+                            'name' => 'search_dish',
+                            'description' => 'Tìm kiếm món ăn theo tên',
+                            'parameters' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'dish_name' => [
+                                        'type' => 'string',
+                                        'description' => 'Tên món ăn cần tìm'
+                                    ]
+                                ],
+                                'required' => ['dish_name']
+                            ]
                         ]
                     ]
                 ]
-            ]
-        ];
+            ];
 
-        // Payload gửi AI
-        $payload = [
-            'contents' => $chatHistory,
-            'systemInstruction' => $systemInstruction,
-            'tools' => $tools,
-            'generationConfig' => [
-                'temperature' => 0.7,
-                'topP' => 0.8,
-                'topK' => 40,
-                'maxOutputTokens' => 1024,
-            ]
-        ];
+            // Payload gửi AI
+            $payload = [
+                'contents' => $chatHistory,
+                'systemInstruction' => $systemInstruction,
+                'tools' => $tools,
+                'generationConfig' => [
+                    'temperature' => 0.7,
+                    'topP' => 0.8,
+                    'topK' => 40,
+                    'maxOutputTokens' => 1024,
+                ]
+            ];
 
-        // Gọi AI
-        $response = $this->callGeminiAPI($apiKey, $payload);
+            // Gọi AI
+            $response = $this->callGeminiAPI($apiKey, $payload);
 
-        if (!$response['success']) {
-            Log::error('Gemini API Error:', ['error' => $response['error']]);
-            return response()->json([
-                'error' => 'Đã xảy ra lỗi khi gọi AI.',
-                'detail' => $response['error']
-            ], 500);
-        }
-
-        $responseData = $response['data'];
-
-        if (!isset($responseData['candidates']) || empty($responseData['candidates'])) {
-            Log::error('Invalid Gemini response structure:', $responseData);
-            return response()->json([
-                'error' => 'AI trả về dữ liệu không hợp lệ.',
-                'detail' => $responseData['error']['message'] ?? 'Unknown error'
-            ], 500);
-        }
-
-        $modelParts = $responseData['candidates'][0]['content']['parts'] ?? [];
-
-        // ========================================
-        // KIỂM TRA AI CÓ GỌI FUNCTION KHÔNG
-        // ========================================
-        $functionCall = null;
-        foreach ($modelParts as $p) {
-            if (isset($p['functionCall'])) {
-                $functionCall = $p['functionCall'];
-                break;
+            if (!$response['success']) {
+                Log::error('Gemini API Error:', ['error' => $response['error']]);
+                return response()->json([
+                    'reply' => 'Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau. 🙏'
+                ], 200); // Trả 200 để frontend hiển thị message
             }
-        }
 
-        // ========================================
-        // XỬ LÝ KHI AI GỌI FUNCTION
-        // ========================================
-        if ($functionCall) {
+            $responseData = $response['data'];
+
+            if (!isset($responseData['candidates']) || empty($responseData['candidates'])) {
+                Log::error('Invalid Gemini response:', $responseData);
+                return response()->json([
+                    'reply' => 'Xin lỗi, AI tạm thời không thể phản hồi. Vui lòng thử lại. 🙏'
+                ], 200);
+            }
+
+            $modelParts = $responseData['candidates'][0]['content']['parts'] ?? [];
+
+            // Kiểm tra AI có gọi function không
+            $functionCall = null;
+            foreach ($modelParts as $p) {
+                if (isset($p['functionCall'])) {
+                    $functionCall = $p['functionCall'];
+                    break;
+                }
+            }
+
+            // Xử lý function call
+            if ($functionCall) {
+                return $this->handleFunctionCall($functionCall);
+            }
+
+            // Không có function call → trả về text
+            return response()->json([
+                'reply' => $this->extractText($modelParts)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Chatbot Exception:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'reply' => 'Xin lỗi, đã xảy ra lỗi không mong muốn. Vui lòng thử lại sau. 🙏'
+            ], 200);
+        }
+    }
+
+    /**
+     * Xử lý function call từ AI
+     */
+    private function handleFunctionCall($functionCall)
+    {
+        try {
             $functionName = $functionCall['name'] ?? null;
             $functionArgs = $functionCall['args'] ?? [];
 
@@ -153,7 +181,7 @@ class ChatbotController extends Controller
             // Thực thi function
             $functionResult = $this->executeFunction($functionName, $functionArgs);
 
-            // --- XỬ LÝ KẾT QUẢ TÌM KIẾM MÓN ĂN ---
+            // Xử lý kết quả search_dish
             if ($functionName === 'search_dish') {
                 if ($functionResult['success'] && !empty($functionResult['results'])) {
                     $dish = $functionResult['results'][0];
@@ -180,7 +208,6 @@ class ChatbotController extends Controller
                         'image_alt' => $dish['name'],
                     ]);
                 } else {
-                    // Không tìm thấy món
                     $searchQuery = $functionArgs['dish_name'] ?? 'món bạn yêu cầu';
                     return response()->json([
                         'reply' => "😔 Xin lỗi, tôi không tìm thấy món \"{$searchQuery}\" trong thực đơn.\n\nBạn có thể thử tìm món khác hoặc xem danh mục để khám phá thêm nhé! 🍜",
@@ -188,12 +215,11 @@ class ChatbotController extends Controller
                 }
             }
 
-            // --- XỬ LÝ KẾT QUẢ LẤY DANH SÁCH MÓN THEO DANH MỤC ---
+            // Xử lý kết quả get_menu_items
             if ($functionName === 'get_menu_items') {
                 if ($functionResult['success'] && !empty($functionResult['items'])) {
                     $replyText = "🍽️ **Danh sách món {$functionResult['category']}**\n\n";
 
-                    // Hiển thị tối đa 8 món
                     $itemsList = array_slice($functionResult['items'], 0, 8);
 
                     foreach ($itemsList as $index => $item) {
@@ -214,30 +240,32 @@ class ChatbotController extends Controller
                         'reply' => $replyText,
                     ]);
                 } else {
-                    // Danh mục không có món hoặc lỗi
                     return response()->json([
                         'reply' => $functionResult['message'] ?? "😔 Hiện tại chưa có món nào trong danh mục này.",
                     ]);
                 }
             }
 
-            // Function không được hỗ trợ hoặc lỗi
+            // Function không được hỗ trợ
             return response()->json([
-                'reply' => "❌ Xin lỗi, tôi không thể thực hiện yêu cầu này. Vui lòng thử lại!",
+                'reply' => "❌ Xin lỗi, tôi không thể thực hiện yêu cầu này.",
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Function Call Error:', [
+                'message' => $e->getMessage(),
+                'function' => $functionCall['name'] ?? 'unknown'
+            ]);
+
+            return response()->json([
+                'reply' => 'Xin lỗi, tôi gặp lỗi khi xử lý yêu cầu này. 🙏'
             ]);
         }
-
-        // ========================================
-        // KHÔNG CÓ FUNCTION CALL → TRẢ VỀ TEXT
-        // ========================================
-        return response()->json([
-            'reply' => $this->extractText($modelParts)
-        ]);
     }
 
-    //=====================
-    // Gọi API Gemini
-    //=====================
+    /**
+     * Gọi Gemini API
+     */
     private function callGeminiAPI($apiKey, $payload)
     {
         $model = config('services.google.model', 'gemini-1.5-flash-latest');
@@ -266,6 +294,9 @@ class ChatbotController extends Controller
         }
     }
 
+    /**
+     * Extract text từ model parts
+     */
     private function extractText($parts)
     {
         $text = '';
@@ -274,85 +305,118 @@ class ChatbotController extends Controller
                 $text .= $p['text'];
             }
         }
-        return $text ?: 'AI không trả về phản hồi.';
+        return $text ?: 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
     }
 
-    //=====================
-    // Function Backend
-    //=====================
+    /**
+     * Thực thi function
+     */
     private function executeFunction($name, $args)
     {
         return match ($name) {
             'get_menu_items' => $this->getMenuItems($args),
             'search_dish' => $this->searchDish($args),
-            default => ['error' => 'Hàm không tồn tại'],
+            default => ['success' => false, 'message' => 'Hàm không tồn tại'],
         };
     }
 
+    /**
+     * Lấy danh sách món theo category
+     */
     private function getMenuItems($args)
     {
-        $categoryName = trim($args['category'] ?? '');
+        try {
+            $categoryName = trim($args['category'] ?? '');
 
-        $category = \App\Models\Category::where('name', 'like', $categoryName)->first();
+            $category = \App\Models\Category::where('name', 'like', "%{$categoryName}%")->first();
 
-        if (!$category) {
-            $available = \App\Models\Category::pluck('name')->toArray();
-            return [
-                'success' => false,
-                'message' => "Không tìm thấy phân loại '$categoryName'. Các phân loại có sẵn: " . implode(', ', $available)
-            ];
-        }
-
-        $items = $category->products()
-            ->select('id', 'name', 'price', 'description', 'image')
-            ->get()
-            ->map(function ($item) {
+            if (!$category) {
+                $available = \App\Models\Category::pluck('name')->toArray();
                 return [
-                    'name' => $item->name,
-                    'price' => $item->price,
-                    'description' => $item->description,
-                    'image_url' => $item->image_url
+                    'success' => false,
+                    'message' => "Không tìm thấy phân loại '{$categoryName}'. Các phân loại có sẵn: " . implode(', ', $available)
                 ];
-            })->toArray();
+            }
 
-        if (empty($items)) {
+            $items = $category->products()
+                ->where('status', true)
+                ->select('id', 'name', 'price', 'description', 'image')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'name' => $item->name,
+                        'price' => $item->price,
+                        'description' => $item->description ?? '',
+                        'image_url' => $item->image_url ?? null
+                    ];
+                })->toArray();
+
+            if (empty($items)) {
+                return [
+                    'success' => false,
+                    'message' => "Phân loại '{$categoryName}' hiện chưa có món ăn."
+                ];
+            }
+
+            return [
+                'success' => true,
+                'category' => $category->name,
+                'items' => $items,
+                'count' => count($items)
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('getMenuItems Error:', ['message' => $e->getMessage()]);
             return [
                 'success' => false,
-                'message' => "Phân loại '$categoryName' hiện chưa có món ăn."
+                'message' => 'Lỗi khi lấy danh sách món ăn.'
             ];
         }
-
-        return [
-            'success' => true,
-            'category' => $category->name,
-            'items' => $items,
-            'count' => count($items)
-        ];
     }
 
+    /**
+     * Tìm kiếm món ăn
+     */
     private function searchDish($args)
     {
-        $dishName = trim($args['dish_name'] ?? '');
+        try {
+            $dishName = trim($args['dish_name'] ?? '');
 
-        $results = \App\Models\Product::where('name', 'like', "%$dishName%")
-            ->with('category:id,name')
-            ->get()
-            ->map(function ($item) {
+            if (empty($dishName)) {
                 return [
-                    'name' => $item->name,
-                    'price' => $item->price,
-                    'description' => $item->description,
-                    'category' => $item->category->name ?? null,
-                    'image_url' => $item->image_url
+                    'success' => false,
+                    'message' => 'Vui lòng cung cấp tên món ăn.'
                 ];
-            })
-            ->toArray();
+            }
 
-        return [
-            'success' => !empty($results),
-            'query' => $dishName,
-            'results' => $results,
-            'count' => count($results)
-        ];
+            $results = \App\Models\Product::where('name', 'like', "%{$dishName}%")
+                ->where('status', true)
+                ->with('category:id,name')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'name' => $item->name,
+                        'price' => $item->price,
+                        'description' => $item->description ?? '',
+                        'category' => $item->category->name ?? null,
+                        'image_url' => $item->image_url ?? null
+                    ];
+                })
+                ->toArray();
+
+            return [
+                'success' => !empty($results),
+                'query' => $dishName,
+                'results' => $results,
+                'count' => count($results)
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('searchDish Error:', ['message' => $e->getMessage()]);
+            return [
+                'success' => false,
+                'message' => 'Lỗi khi tìm kiếm món ăn.'
+            ];
+        }
     }
 }
