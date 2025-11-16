@@ -29,9 +29,15 @@ use Illuminate\Support\Facades\Artisan;
 Route::get('/users', [UserController::class, 'index']);
 
 Route::get('/run-seed', function () {
-    Artisan::call('migrate:fresh --seed --force');
-    return "Seed done!";
+    try {
+        Artisan::call('db:seed --force');
+        return nl2br(Artisan::output());
+    } catch (\Exception $e) {
+        return "❌ ERROR: " . $e->getMessage();
+    }
 });
+
+
 
 
 /*
