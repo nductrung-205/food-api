@@ -38,7 +38,9 @@ COPY Caddyfile /etc/caddy/Caddyfile
 EXPOSE 8000
 
 # --- Auto migrate & seed if database empty ---
-RUN php artisan migrate --force || true && php docker-seed.php
+CMD php artisan migrate --force && php docker-seed.php && \
+    php-fpm -D && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+
 
 # 1️⃣1️⃣ Start cả PHP-FPM & Caddy trong 1 container (foreground)
 CMD php-fpm -D && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
