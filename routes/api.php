@@ -24,10 +24,6 @@ use App\Http\Controllers\Api\{
 
 use App\Http\Controllers\MomoController;
 
-// ✅ XỬ LÝ PREFLIGHT REQUEST
-Route::options('{any}', function () {
-    return response()->json([], 200);
-})->where('any', '.*');
 
 // ⚠️ chỉ tạm dùng để test
 Route::get('/users', [UserController::class, 'index']);
