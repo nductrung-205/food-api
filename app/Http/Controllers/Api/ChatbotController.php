@@ -12,6 +12,13 @@ class ChatbotController extends Controller
     public function chat(Request $request)
     {
         $apiKey = config('services.google.api_key');
+
+        Log::info('API Key Check', [
+            'has_key' => !empty($apiKey),
+            'key_length' => strlen($apiKey ?? ''),
+            'env_value' => env('GOOGLE_API_KEY') ? 'exists' : 'missing'
+        ]);
+
         if (!$apiKey) {
             return response()->json(['error' => 'Thiếu API Key'], 500);
         }
