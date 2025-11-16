@@ -23,10 +23,16 @@ use App\Http\Controllers\Api\{
 };
 
 use App\Http\Controllers\MomoController;
-
+use Illuminate\Support\Facades\Artisan;
 
 // ⚠️ chỉ tạm dùng để test
 Route::get('/users', [UserController::class, 'index']);
+
+Route::get('/run-seed', function () {
+    Artisan::call('migrate:fresh --seed --force');
+    return "Seed done!";
+});
+
 
 /*
 |--------------------------------------------------------------------------
