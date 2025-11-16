@@ -1,27 +1,27 @@
 <?php
 
 return [
-    'paths' => ['api/*', 'sanctum/csrf-cookie'], // Áp dụng cho tất cả API routes và Sanctum CSRF
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'], // Cho phép tất cả các phương thức HTTP
+    'allowed_methods' => ['*'],
 
     'allowed_origins' => [
         'https://ban-do-an.vercel.app',
-        'http://localhost:5173', // Địa chỉ cục bộ của bạn
-        'https://*.vercel.app', // Cho phép tất cả subdomains trên vercel
-        'https://food-api-xl8n.onrender.com', // Địa chỉ render.com của bạn
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'https://food-api-xl8n.onrender.com',
     ],
 
-    // allowed_origins_patterns có thể dùng để khớp các pattern phức tạp hơn,
-    // nhưng `allowed_origins` là đủ cho các URL cụ thể.
-    // Nếu bạn đang dùng `https://*.vercel.app`, thì `https://ban-do-an.vercel.app` là thừa nhưng không gây hại.
-    'allowed_origins_patterns' => [], 
+    // ✅ DI CHUYỂN WILDCARD VÀO ĐÂY
+    'allowed_origins_patterns' => [
+        '/^https:\/\/.*\.vercel\.app$/',
+    ], 
 
-    'allowed_headers' => ['*'], // Cho phép tất cả các header
+    'allowed_headers' => ['*'],
 
-    'exposed_headers' => [], // Các header mà trình duyệt có thể truy cập
+    'exposed_headers' => [],
 
-    'max_age' => 0, // Thời gian cache preflight request (đặt 0 để không cache, hoặc 600-3600 để cache)
+    'max_age' => 600, // Cache preflight request 10 phút
 
-    'supports_credentials' => true, // Cần thiết nếu bạn gửi cookie/authorization headers
+    'supports_credentials' => true,
 ];

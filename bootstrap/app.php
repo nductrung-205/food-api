@@ -12,6 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // ✅ THÊM CORS MIDDLEWARE CHO API
+        $middleware->api(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+        
+        // Middleware alias
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
         ]);        

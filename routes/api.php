@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 use App\Http\Controllers\Api\{
     AuthController,
     UserController,
@@ -22,6 +23,11 @@ use App\Http\Controllers\Api\{
 };
 
 use App\Http\Controllers\MomoController;
+
+// ✅ XỬ LÝ PREFLIGHT REQUEST
+Route::options('{any}', function () {
+    return response()->json([], 200);
+})->where('any', '.*');
 
 // ⚠️ chỉ tạm dùng để test
 Route::get('/users', [UserController::class, 'index']);
