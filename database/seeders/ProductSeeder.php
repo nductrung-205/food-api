@@ -4,12 +4,15 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Product;
+use Illuminate\Support\Facades\DB;
 
 class ProductSeeder extends Seeder
 {
     public function run(): void
     {
+        echo "🌱 Bắt đầu seeding...\n";
 
+        // Seed 22 sản phẩm mẫu
         $products = [
             // Món chính (category_id = 1)
             [
@@ -37,7 +40,7 @@ class ProductSeeder extends Seeder
                 'description' => 'Bún chả Hà Nội với chả nướng, nước mắm chua ngọt, rau sống và bún trắng.',
                 'price' => 65000,
                 'stock' => 90,
-                'image' => 'https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:format(webp):quality(75)/2024_1_12_638406880045931692_cach-lam-bun-cha-ha-noi-0.jpg', // minh hoạ, nên thay bằng ảnh thực
+                'image' => 'https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:format(webp):quality(75)/2024_1_12_638406880045931692_cach-lam-bun-cha-ha-noi-0.jpg',
             ],
             [
                 'category_id' => 1,
@@ -55,7 +58,7 @@ class ProductSeeder extends Seeder
                 'description' => 'Cá kho trong nồi đất với nước hàng, tiêu và hành lá – món kho đậm đà.',
                 'price' => 85000,
                 'stock' => 50,
-                'image' => 'https://cdnv2.tgdd.vn/mwg-static/common/Common/05052025%20-%202025-05-09T154044.858.jpg', // minh hoạ, nên thay bằng ảnh thực
+                'image' => 'https://cdnv2.tgdd.vn/mwg-static/common/Common/05052025%20-%202025-05-09T154044.858.jpg',
             ],
             [
                 'category_id' => 1,
@@ -64,7 +67,7 @@ class ProductSeeder extends Seeder
                 'description' => 'Gà phi lê xào cùng húng quế, tỏi, ớt – thơm và cay nhẹ.',
                 'price' => 78000,
                 'stock' => 70,
-                'image' => 'https://i.ytimg.com/vi/M9_hH6mRUQk/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLDBWjTLea1z6CsWnG3RD4HzwN8cjw', // minh hoạ
+                'image' => 'https://i.ytimg.com/vi/M9_hH6mRUQk/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLDBWjTLea1z6CsWnG3RD4HzwN8cjw',
             ],
             [
                 'category_id' => 1,
@@ -73,7 +76,7 @@ class ProductSeeder extends Seeder
                 'description' => 'Xôi nếp dẻo thơm kết hợp lạp xưởng, trứng cút và xúc xích Trung Hoa.',
                 'price' => 50000,
                 'stock' => 60,
-                'image' => 'https://cdn.tgdd.vn/Files/2021/09/06/1380707/cach-lam-xoi-lap-xuong-ngon-mem-sieu-nhanh-bang-lo-vi-song-202109062233093121.jpg', // minh hoạ
+                'image' => 'https://cdn.tgdd.vn/Files/2021/09/06/1380707/cach-lam-xoi-lap-xuong-ngon-mem-sieu-nhanh-bang-lo-vi-song-202109062233093121.jpg',
             ],
             [
                 'category_id' => 1,
@@ -131,7 +134,6 @@ class ProductSeeder extends Seeder
                 'stock' => 200,
                 'image' => 'https://sieuthinguyenlieu.com/assets/uploads/images/W1A57nEO14CX_tra-chanh-sa-web.jpg',
             ],
-
             [
                 'category_id' => 2,
                 'name' => 'Sinh tố bơ',
@@ -185,7 +187,7 @@ class ProductSeeder extends Seeder
                 'category_id' => 4,
                 'name' => 'Chè bà ba',
                 'slug' => 'che-ba-ba',
-                'description' => 'Chè bà ba với khoai lang, khoai môn, đậu và nước cốt dừa thơm béo. ',
+                'description' => 'Chè bà ba với khoai lang, khoai môn, đậu và nước cốt dừa thơm béo.',
                 'price' => 40000,
                 'stock' => 120,
                 'image' => 'https://i.ytimg.com/vi/cw-HNzIqgK0/maxresdefault.jpg',
@@ -194,7 +196,7 @@ class ProductSeeder extends Seeder
                 'category_id' => 4,
                 'name' => 'Chè trôi nước',
                 'slug' => 'che-troi-nuoc',
-                'description' => 'Bánh trôi nước từ nếp, nhân đậu xanh, nước gừng ngọt ấm và mè rang. ',
+                'description' => 'Bánh trôi nước từ nếp, nhân đậu xanh, nước gừng ngọt ấm và mè rang.',
                 'price' => 35000,
                 'stock' => 100,
                 'image' => 'https://cdn.tgdd.vn/2021/09/CookProduct/1200-1200x676-71.jpg',
@@ -217,21 +219,74 @@ class ProductSeeder extends Seeder
                 'stock' => 150,
                 'image' => 'https://file.hstatic.net/200000721249/file/cach_lam_kem_dua_matcha_92c03c90fe6c4e22806e1126feedc319.jpg',
             ],
-
-
         ];
 
+        // Insert 22 sản phẩm mẫu
         foreach ($products as $p) {
             Product::create($p);
         }
 
-        $total = 10000;
+        echo "✅ Đã seed 22 sản phẩm mẫu\n";
 
-        for ($i = 1; $i <= $total; $i++) {
-            Product::factory()->create([
-                'name' => "Sản phẩm $i",
-                'slug' => "san-pham-$i",
-            ]);
+        // ✅ TẠO 10,000 SẢN PHẨM BẰNG BATCH INSERT (SIÊU NHANH)
+        $total = 10000;
+        $batchSize = 500; // Mỗi lần insert 500 records
+        
+        // Lấy danh sách ảnh
+        $images = [
+            'https://static.vinwonders.com/production/pho-bo-ha-noi.jpeg',
+            'https://static.vinwonders.com/production/Pho-ga-Ha-Noi-9.jpg',
+            'https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:format(webp):quality(75)/2024_1_12_638406880045931692_cach-lam-bun-cha-ha-noi-0.jpg',
+            'https://cdn.tgdd.vn/2020/12/CookProduct/11-1200x676.jpg',
+            'https://cdnv2.tgdd.vn/mwg-static/common/Common/05052025%20-%202025-05-09T154044.858.jpg',
+            'https://i.ytimg.com/vi/M9_hH6mRUQk/hq720.jpg',
+            'https://cdn.tgdd.vn/Files/2021/09/06/1380707/cach-lam-xoi-lap-xuong-ngon-mem-sieu-nhanh-bang-lo-vi-song-202109062233093121.jpg',
+            'https://cdn.tgdd.vn/2021/04/content/banhcuon-800x450.jpg',
+            'https://banhmibahuynh.vn/wp-content/uploads/2022/11/Banh-bao-ba-Huynh.jpg',
+            'https://thuonghieusanpham.vn/stores/news_dataimages/2023/012023/15/11/in_article/bong-220230115112126.jpg',
+            'https://ongbi.vn/wp-content/uploads/2023/01/ca-phe-sua-da.jpg',
+            'https://www.huongnghiepaau.com/wp-content/uploads/2017/07/ca-phe-trung-la-thuc-uong-doc-dao.jpg',
+            'https://sieuthinguyenlieu.com/assets/uploads/images/W1A57nEO14CX_tra-chanh-sa-web.jpg',
+            'https://images.prismic.io/nutriinfo/aBHRavIqRLdaBvLz_hinh-anh-sinh-to-bo.jpg',
+            'https://www.huongnghiepaau.com/wp-content/uploads/2019/08/banh-mi-kep-thit-nuong-thom-phuc.jpg',
+            'https://cdn.tgdd.vn/2021/08/CookRecipe/Avatar/goi-cuon-tom-thit-thumbnail-1.jpg',
+            'https://cdn.tgdd.vn/2022/10/CookDishThumb/cach-lam-mon-nem-ran-thom-ngon-chuan-vi-don-gian-tai-nha-thumb-620x620.jpg',
+            'https://cdn.xanhsm.com/2024/12/dfdc574a-banh-tom-ho-tay-18.jpg',
+            'https://i.ytimg.com/vi/cw-HNzIqgK0/maxresdefault.jpg',
+            'https://cdn.tgdd.vn/2021/09/CookProduct/1200-1200x676-71.jpg',
+            'https://cdn.tgdd.vn/Files/2019/12/04/1224657/4-cach-lam-banh-chuoi-nuong-thom-ngon-12-760x367.jpg',
+            'https://file.hstatic.net/200000721249/file/cach_lam_kem_dua_matcha_92c03c90fe6c4e22806e1126feedc319.jpg',
+        ];
+
+        $now = now();
+
+        for ($batch = 0; $batch < ceil($total / $batchSize); $batch++) {
+            $data = [];
+            
+            for ($i = 1; $i <= $batchSize; $i++) {
+                $index = $batch * $batchSize + $i;
+                if ($index > $total) break;
+
+                $data[] = [
+                    'category_id' => rand(1, 4),
+                    'name' => "Sản phẩm $index",
+                    'slug' => "san-pham-$index",
+                    'description' => 'Sản phẩm tự động được tạo từ seeder',
+                    'price' => rand(10000, 200000),
+                    'stock' => rand(10, 300),
+                    'image' => $images[array_rand($images)],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            // Insert hàng loạt vào database
+            DB::table('products')->insert($data);
+            
+            $current = min(($batch + 1) * $batchSize, $total);
+            echo "✅ Đã seed $current/$total sản phẩm\n";
         }
+
+        echo "🎉 Hoàn thành! Tổng cộng: " . ($total + 22) . " sản phẩm\n";
     }
 }

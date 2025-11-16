@@ -34,11 +34,15 @@ RUN chmod -R 775 storage bootstrap/cache
 # 9️⃣ Copy cấu hình Caddy
 COPY Caddyfile /etc/caddy/Caddyfile
 
-# 🔟 Mở cổng Render
+# 🔟 ✅ Tăng PHP timeout và memory
+RUN echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/custom.ini
+
+# 1️⃣1️⃣ Mở cổng Render
 EXPOSE 8000
 
-# --- Auto migrate & seed if database empty ---
+# 1️⃣2️⃣ Auto migrate & seed if database empty
 RUN php artisan migrate --force || true && php docker-seed.php
 
-# 1️⃣1️⃣ Start cả PHP-FPM & Caddy trong 1 container (foreground)
+# 1️⃣3️⃣ Start cả PHP-FPM & Caddy trong 1 container (foreground)
 CMD php-fpm -D && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
