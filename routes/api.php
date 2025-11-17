@@ -59,36 +59,7 @@ Route::get('/categories/{id}/products', [ProductController::class, 'getByCategor
 // Lấy theo slug
 Route::get('/category-slug/{slug}/products', [CategoryController::class, 'productsBySlug']);
 
-Route::get('/test', function () {
-    return response()->json([
-        'status' => 'ok',
-        'message' => 'API is working!',
-        'timestamp' => now()->toDateTimeString(),
-        'env' => [
-            'APP_ENV' => env('APP_ENV'),
-            'HAS_GOOGLE_KEY' => !empty(env('GOOGLE_API_KEY')),
-            'KEY_LENGTH' => env('GOOGLE_API_KEY') ? strlen(env('GOOGLE_API_KEY')) : 0,
-        ]
-    ]);
-});
-
 Route::post('/chat', [ChatbotController::class, 'chat']);
-
-Route::get('/health', function () {
-    try {
-        // Test database connection
-        DB::connection()->getPdo();
-        $dbStatus = 'connected';
-    } catch (\Exception $e) {
-        $dbStatus = 'disconnected: ' . $e->getMessage();
-    }
-
-    return response()->json([
-        'status' => 'healthy',
-        'database' => $dbStatus,
-        'timestamp' => now()->toDateTimeString(),
-    ]);
-});
 
 Route::prefix('vnpay')->group(function () {
     Route::post('/create-payment', [VNPayController::class, 'createPayment']);

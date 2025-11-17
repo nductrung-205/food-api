@@ -5,78 +5,42 @@ services:
     plan: free
     region: oregon
     dockerfilePath: ./Dockerfile
-    
-    # Environment variables
     envVars:
       - key: APP_ENV
         value: production
-      
       - key: APP_DEBUG
         value: false
-      
       - key: APP_URL
         value: https://food-api-xl8n.onrender.com
-      
-      # ✅ FIX 1: Đổi LOG_CHANNEL từ stack sang stderr
       - key: LOG_CHANNEL
-        value: stderr
-      
-      - key: LOG_LEVEL
-        value: info
-      
-      # ✅ FIX 2: Thêm APP_KEY (bắt buộc cho Laravel)
-      # Tạo key bằng: php artisan key:generate --show
-      # Hoặc set manual trên Dashboard
-      - key: APP_KEY
-        sync: false
-      
-      # Database
+        value: stack
+      - key: GOOGLE_API_KEY
+        sync: false   
+      - key: GOOGLE_MODEL
+        value: gemini-1.5-flash-latest   
       - key: DB_CONNECTION
         value: pgsql
-      
       - key: DB_HOST
         fromDatabase:
           name: food-db
           property: host
-      
       - key: DB_PORT
         fromDatabase:
           name: food-db
           property: port
-      
       - key: DB_DATABASE
         fromDatabase:
           name: food-db
           property: database
-      
       - key: DB_USERNAME
         fromDatabase:
           name: food-db
           property: user
-      
       - key: DB_PASSWORD
         fromDatabase:
           name: food-db
           property: password
-      
-      # ✅ FIX 3: Đổi GEMINI_API_KEY thành GOOGLE_API_KEY (khớp với code)
-      - key: GOOGLE_API_KEY
-        sync: false  # Set manual trên Dashboard
-      
-      - key: GOOGLE_MODEL
-        value: gemini-flash-latest
-      
-      # CORS
-      - key: APP_URL_FRONTEND
-        value: https://ban-do-an.vercel.app
-    
-    # Health check endpoint
-    healthCheckPath: /api/health
-    
-    # Auto deploy
-    autoDeploy: true
 
-# Database
 databases:
   - name: food-db
     plan: free
