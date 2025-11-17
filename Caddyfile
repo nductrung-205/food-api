@@ -1,6 +1,35 @@
-:8000
+https://food-api-xl8n.onrender.com {
+    root * /var/www/html/public
 
-root * /var/www/html/public
-encode gzip
-php_fastcgi 127.0.0.1:9000
-file_server
+    encode gzip
+
+    php_fastcgi 127.0.0.1:9000
+
+    file_server
+
+    # -----------------------------
+    # 🔥 FIX CORS NGAY TẠI CADDY
+    # -----------------------------
+    header Access-Control-Allow-Origin "*"   # hoặc domain cụ thể
+    header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    header Access-Control-Allow-Headers "*"
+    header Access-Control-Allow-Credentials "true"
+
+    @preflight method OPTIONS
+    handle @preflight {
+        header Access-Control-Allow-Origin "*"
+        header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        header Access-Control-Allow-Headers "*"
+        header Access-Control-Allow-Credentials "true"
+        status 204
+        exit 0
+    }
+}
+
+
+:8000 {
+    root * /var/www/html/public
+    encode gzip
+    php_fastcgi 127.0.0.1:9000
+    file_server
+}
