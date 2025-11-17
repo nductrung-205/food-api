@@ -25,3 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();
+
+// Xóa cache config khi deploy (chỉ chạy 1 lần)
+if (file_exists($cached = base_path('bootstrap/cache/config.php'))) {
+    @unlink($cached);
+}

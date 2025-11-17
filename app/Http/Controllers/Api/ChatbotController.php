@@ -12,29 +12,43 @@ class ChatbotController extends Controller
     public function chat(Request $request)
     {
         try {
-            Log::info('Chat request received', [
+            // ✅ LOG CHI TIẾT ĐỂ DEBUG
+            Log::info('=== CHAT REQUEST START ===', [
                 'origin' => $request->header('Origin'),
                 'method' => $request->method(),
                 'ip' => $request->ip(),
+                'all_env' => [
+                    'APP_ENV' => env('APP_ENV'),
+                    'APP_DEBUG' => env('APP_DEBUG'),
+                    'HAS_GOOGLE_KEY' => !empty(env('GOOGLE_API_KEY')),
+                    'KEY_LENGTH' => env('GOOGLE_API_KEY') ? strlen(env('GOOGLE_API_KEY')) : 0,
+                ]
             ]);
 
-            // Kiểm tra API Key
-            $apiKey = config('services.google.api_key');
+            // ✅ KIỂM TRA API KEY - ƯU TIÊN env() TRƯỚC
+            $apiKey = env('GOOGLE_API_KEY') ?? config('services.google.api_key');
             
             Log::info('API Key Check', [
                 'has_key' => !empty($apiKey),
                 'key_length' => $apiKey ? strlen($apiKey) : 0,
-                'config_exists' => config('services.google') !== null,
+                'from_env' => !empty(env('GOOGLE_API_KEY')) ? 'YES' : 'NO',
+                'from_config' => !empty(config('services.google.api_key')) ? 'YES' : 'NO',
             ]);
 
             if (!$apiKey) {
-                Log::error('Missing GOOGLE_API_KEY in config');
+                Log::error('❌ MISSING GOOGLE_API_KEY', [
+                    'env_value' => env('GOOGLE_API_KEY'),
+                    'config_value' => config('services.google.api_key'),
+                    'all_config' => config('services.google')
+                ]);
+                
                 return response()->json([
-                    'error' => 'Chatbot tạm thời không khả dụng. Vui lòng thử lại sau.'
+                    'error' => 'Chatbot tạm thời không khả dụng. Vui lòng thử lại sau.',
+                    'debug' => env('APP_DEBUG') ? 'Missing GOOGLE_API_KEY' : null
                 ], 500);
             }
 
-            // Validate request
+            // ✅ Validate request
             $userMessage = $request->input('message');
             if (!$userMessage) {
                 return response()->json(['error' => 'Vui lòng nhập tin nhắn'], 400);
@@ -110,14 +124,17 @@ class ChatbotController extends Controller
                 ]
             ];
 
+            Log::info('📤 Calling Gemini API...');
+
             // Gọi AI
             $response = $this->callGeminiAPI($apiKey, $payload);
 
             if (!$response['success']) {
-                Log::error('Gemini API Error:', ['error' => $response['error']]);
+                Log::error('❌ Gemini API Error:', ['error' => $response['error']]);
                 return response()->json([
-                    'reply' => 'Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau. 🙏'
-                ], 200); // Trả 200 để frontend hiển thị message
+                    'reply' => 'Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau. 🙏',
+                    'debug' => env('APP_DEBUG') ? $response['error'] : null
+                ], 200);
             }
 
             $responseData = $response['data'];
@@ -151,7 +168,7 @@ class ChatbotController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Chatbot Exception:', [
+            Log::error('💥 Chatbot Exception:', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -159,8 +176,9 @@ class ChatbotController extends Controller
             ]);
 
             return response()->json([
-                'reply' => 'Xin lỗi, đã xảy ra lỗi không mong muốn. Vui lòng thử lại sau. 🙏'
-            ], 200);
+                'reply' => 'Xin lỗi, đã xảy ra lỗi không mong muốn. Vui lòng thử lại sau. 🙏',
+                'error_detail' => env('APP_DEBUG') ? $e->getMessage() : null
+            ], 500);
         }
     }
 
@@ -173,7 +191,7 @@ class ChatbotController extends Controller
             $functionName = $functionCall['name'] ?? null;
             $functionArgs = $functionCall['args'] ?? [];
 
-            Log::info('Function Call Detected', [
+            Log::info('🔧 Function Call Detected', [
                 'name' => $functionName,
                 'args' => $functionArgs
             ]);
@@ -268,28 +286,34 @@ class ChatbotController extends Controller
      */
     private function callGeminiAPI($apiKey, $payload)
     {
-        $model = config('services.google.model', 'gemini-1.5-flash-latest');
+        $model = env('GOOGLE_MODEL') ?? config('services.google.model', 'gemini-1.5-flash-latest');
 
         try {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+            
+            Log::info('📡 Gemini API Request', [
+                'model' => $model,
+                'url_length' => strlen($url),
+                'has_api_key' => !empty($apiKey)
+            ]);
+
             $response = Http::timeout(30)
                 ->withHeaders(['Content-Type' => 'application/json'])
-                ->post(
-                    "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}",
-                    $payload
-                );
+                ->post($url, $payload);
 
             if ($response->successful()) {
+                Log::info('✅ Gemini API Success');
                 return ['success' => true, 'data' => $response->json()];
             }
 
-            Log::error('Gemini API HTTP Error:', [
+            Log::error('❌ Gemini API HTTP Error:', [
                 'status' => $response->status(),
                 'body' => $response->body()
             ]);
 
             return ['success' => false, 'error' => $response->body()];
         } catch (\Exception $e) {
-            Log::error('Gemini API Exception:', ['message' => $e->getMessage()]);
+            Log::error('❌ Gemini API Exception:', ['message' => $e->getMessage()]);
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
