@@ -12,16 +12,13 @@ return [
         'https://food-api-xl8n.onrender.com',
     ],
 
-    // ✅ DI CHUYỂN WILDCARD VÀO ĐÂY
-    'allowed_origins_patterns' => [
-        '/^https:\/\/.*\.vercel\.app$/',
-    ], 
+    'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 
     'exposed_headers' => [],
 
-    'max_age' => 600, // Cache preflight request 10 phút
+    'max_age' => 0,
 
     'supports_credentials' => true,
 ];
