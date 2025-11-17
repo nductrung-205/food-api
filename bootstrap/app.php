@@ -13,19 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
-        // BẬT CORS GLOBAL (QUAN TRỌNG NHẤT)
-        $middleware->appendToGroup('web', [
+        $middleware->prepend([
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
-
-        $middleware->appendToGroup('api', [
-            \Illuminate\Http\Middleware\HandleCors::class,
-        ]);
-
-        // Nếu bạn có custom CORS middleware → bỏ đi hoặc cho sau
-        // $middleware->api(prepend: [
-        //     \App\Http\Middleware\CorsMiddleware::class,
-        // ]);
 
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
