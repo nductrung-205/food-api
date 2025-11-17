@@ -12,18 +12,26 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Custom CORS middleware (ưu tiên cao nhất)
-        $middleware->api(prepend: [
-            \App\Http\Middleware\CorsMiddleware::class,
+
+        // BẬT CORS GLOBAL (QUAN TRỌNG NHẤT)
+        $middleware->appendToGroup('web', [
+            \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
-        // Middleware alias
+        $middleware->appendToGroup('api', [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+
+        // Nếu bạn có custom CORS middleware → bỏ đi hoặc cho sau
+        // $middleware->api(prepend: [
+        //     \App\Http\Middleware\CorsMiddleware::class,
+        // ]);
+
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
     })
+
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();
-
-    
