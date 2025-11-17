@@ -286,7 +286,13 @@ class ChatbotController extends Controller
      */
     private function callGeminiAPI($apiKey, $payload)
     {
+        // ✅ Support cả gemini-flash-latest và gemini-1.5-flash-latest
         $model = env('GOOGLE_MODEL') ?? config('services.google.model', 'gemini-1.5-flash-latest');
+        
+        // Normalize model name
+        if ($model === 'gemini-flash-latest') {
+            $model = 'gemini-1.5-flash-latest';
+        }
 
         try {
             $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
